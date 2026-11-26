@@ -1,0 +1,27 @@
+# ArgoCD Application = "make namespace 'bags' in this cluster look exactly like
+# path deploy/overlays/dev at branch main of this Git repo — continuously".
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bags-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io   # deleting the App also deletes what it deployed
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/CHANGE_ME/tgtg-lab.git
+    targetRevision: main
+    path: deploy/overlays/dev                   # ArgoCD detects kustomization.yaml and runs kustomize
+  destination:
+    server: https://kubernetes.default.svc      # "the cluster ArgoCD itself runs in"
+    namespace: bags
+  syncPolicy:
+    automated:
+      prune: true      # resource deleted from Git -> deleted from cluster
+      selfHeal: true   # someone changes the cluster by hand -> reverted to Git
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }

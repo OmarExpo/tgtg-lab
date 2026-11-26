@@ -1,0 +1,77 @@
+# Deployment = "keep N identical pods of this template running, and roll out changes safely".
+# It owns a ReplicaSet, which owns the Pods. You never edit Pods directly.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bags-api
+  labels:
+    app: bags-api
+spec:
+  # NO "replicas:" on purpose. The HPA owns the replica count. If Git also set it,
+  # ArgoCD (selfHeal) and the HPA would fight forever: HPA scales to 5, ArgoCD resets to 2...
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: bags-api                # MUST match template labels: this is how the Deployment finds its pods
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0            # never go below desired capacity during a rollout
+      maxSurge: 1                  # add one new pod at a time
+  template:
+    metadata:
+      labels:
+        app: bags-api
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bags-api
+          image: bags-api          # placeholder; the overlay's kustomization sets the real image + tag
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ERROR_RATE
+              value: "0"
+            - name: EXTRA_LATENCY
+              value: "0"
+            - name: NOT_READY
+              value: "false"
+          resources:
+            requests:              # what the scheduler reserves; HPA % is calculated against this
+              cpu: 50m
+              memory: 64Mi
+            limits:                # memory limit -> OOMKilled if exceeded. No CPU limit (avoids throttling).
+              memory: 128Mi
+          startupProbe:            # gives slow starters (JVM!) time before liveness kicks in
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 2
+            failureThreshold: 15
+          readinessProbe:          # failing -> removed from Service endpoints, NOT restarted
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:           # failing -> container restarted. Keep it dumb: never check the DB here.
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:               # let endpoints/load balancers stop sending traffic before shutdown
+              exec:
+                command: ["sleep", "5"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp      # gunicorn needs a writable tmp dir
+      volumes:
+        - name: tmp
+          emptyDir: {}

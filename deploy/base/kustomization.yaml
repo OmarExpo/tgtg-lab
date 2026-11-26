@@ -1,0 +1,22 @@
+# Kustomize "base": the shared, environment-agnostic manifests.
+# Overlays (deploy/overlays/<env>) reuse it and change only what differs per env.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - servicemonitor.yaml
+  - prometheusrule.yaml
+
+# Grafana dashboard shipped through GitOps: the Grafana sidecar loads any ConfigMap
+# labelled grafana_dashboard=1 (we tell it to search all namespaces in monitoring/values.yaml).
+configMapGenerator:
+  - name: bags-api-dashboard
+    files:
+      - dashboards/bags-api.json
+    options:
+      disableNameSuffixHash: true
+      labels:
+        grafana_dashboard: "1"

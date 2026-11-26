@@ -1,0 +1,17 @@
+# ServiceMonitor is a CRD from the Prometheus Operator (installed by kube-prometheus-stack).
+# It tells Prometheus: "scrape every Service with label app=bags-api, on port 'http', path /metrics".
+# The operator turns this into Prometheus scrape config for you.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: bags-api
+  labels:
+    app: bags-api
+spec:
+  selector:
+    matchLabels:
+      app: bags-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

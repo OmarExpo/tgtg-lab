@@ -1,0 +1,82 @@
+# CI = build & publish an artifact, then propose the new desired state in Git.
+# CD = ArgoCD (inside the cluster) notices the Git change and deploys it.
+# CI never talks to the cluster and holds no cluster credentials.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", ".github/workflows/ci.yml"]   # the bump commit only touches deploy/ -> no loop
+  pull_request:
+    paths: ["app/**"]
+  workflow_dispatch: {}
+
+# Least privilege for the built-in GITHUB_TOKEN.
+permissions:
+  contents: write    # to push the image-tag bump commit
+  packages: write    # to push to GHCR
+
+# Two pushes in quick succession -> run one at a time, so bump commits don't race.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: app/requirements.txt
+      - name: Install deps
+        run: pip install -r app/requirements.txt
+      - name: Unit tests
+        working-directory: app
+        run: pytest -q
+
+  build-and-deploy:
+    needs: test
+    if: github.event_name != 'pull_request'     # PRs are tested, never deployed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image name (GHCR needs lowercase)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/bags-api" >> "$GITHUB_ENV"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (tag = commit SHA, immutable and traceable)
+        uses: docker/build-push-action@v6
+        with:
+          context: app
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: ""
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install kustomize
+        run: |
+          curl -sSfL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Bump image tag in the dev overlay (the GitOps "deploy")
+        working-directory: deploy/overlays/dev
+        run: |
+          kustomize edit set image bags-api=${IMAGE}:${GITHUB_SHA}
+          git config user.name  "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add kustomization.yaml
+          git commit -m "deploy(dev): bags-api ${GITHUB_SHA::7}"
+          git pull --rebase origin main
+          git push origin HEAD:main

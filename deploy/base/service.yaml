@@ -1,0 +1,16 @@
+# Service = stable virtual IP + DNS name (bags-api.bags.svc.cluster.local) in front of
+# whichever pods currently match the selector AND are Ready.
+apiVersion: v1
+kind: Service
+metadata:
+  name: bags-api
+  labels:
+    app: bags-api                  # the ServiceMonitor selects the Service by this label
+spec:
+  type: ClusterIP
+  selector:
+    app: bags-api
+  ports:
+    - name: http                   # named port: the ServiceMonitor refers to it by name
+      port: 80
+      targetPort: http

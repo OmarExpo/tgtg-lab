@@ -1,0 +1,57 @@
+{
+  "title": "bags-api (RED)",
+  "uid": "bags-api-red",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-30m", "to": "now" },
+  "tags": ["tgtg-lab"],
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Rate: requests / second (/bags)",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "{{status}}",
+          "expr": "sum by (status) (rate(http_requests_total{service=\"bags-api\",path=\"/bags\"}[1m]))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Errors: 5xx ratio",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.05 } ] } } },
+      "targets": [
+        { "refId": "A", "legendFormat": "error ratio",
+          "expr": "sum(rate(http_requests_total{service=\"bags-api\",path=\"/bags\",status=~\"5..\"}[1m])) / sum(rate(http_requests_total{service=\"bags-api\",path=\"/bags\"}[1m]))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Duration: p50 / p95 / p99 latency",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "refId": "A", "legendFormat": "p50", "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"bags-api\",path=\"/bags\"}[1m])))" },
+        { "refId": "B", "legendFormat": "p95", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"bags-api\",path=\"/bags\"}[1m])))" },
+        { "refId": "C", "legendFormat": "p99", "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{service=\"bags-api\",path=\"/bags\"}[1m])))" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Saturation: pods & CPU",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "legendFormat": "available pods", "expr": "kube_deployment_status_replicas_available{namespace=\"bags\",deployment=\"bags-api\"}" },
+        { "refId": "B", "legendFormat": "CPU cores used", "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"bags\",container=\"bags-api\"}[1m]))" },
+        { "refId": "C", "legendFormat": "restarts (total)", "expr": "sum(kube_pod_container_status_restarts_total{namespace=\"bags\",container=\"bags-api\"})" }
+      ]
+    }
+  ]
+}

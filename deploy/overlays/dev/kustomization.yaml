@@ -1,0 +1,14 @@
+# "dev" overlay = base + what is specific to this environment.
+# In a real multi-region setup you'd have overlays like prod-eu-west-1, prod-us-east-1, ...
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: bags
+resources:
+  - ../../base
+
+# The ONLY line CI changes on every release. Phase 2 uses a locally built image
+# loaded into kind; after the first CI run this becomes ghcr.io/<you>/tgtg-lab/bags-api:<git-sha>.
+images:
+  - name: bags-api
+    newName: bags-api
+    newTag: dev

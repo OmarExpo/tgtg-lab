@@ -1,0 +1,38 @@
+# Values for the kube-prometheus-stack Helm chart, trimmed for a laptop kind cluster.
+# The chart installs: Prometheus Operator, Prometheus, Alertmanager, Grafana,
+# kube-state-metrics (object state -> metrics) and node-exporter (node metrics).
+
+prometheus:
+  prometheusSpec:
+    # By default Prometheus only picks up ServiceMonitors/Rules labelled release=<helm release>.
+    # "false" here = pick up ALL of them, so our app's ServiceMonitor works without that label.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 2d
+    resources:
+      requests: { cpu: 100m, memory: 400Mi }
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+
+grafana:
+  adminPassword: admin              # lab only
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL          # load dashboard ConfigMaps from any namespace (ours lives in 'bags')
+
+# These control-plane components aren't reachable the normal way on kind -> they'd only
+# produce red "target down" noise. On EKS they're managed by AWS and also not scraped.
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false

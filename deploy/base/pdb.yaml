@@ -1,0 +1,11 @@
+# PodDisruptionBudget: during *voluntary* disruptions (node drain, cluster upgrade,
+# Karpenter consolidation) keep at least 1 pod up. Doesn't protect against crashes.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: bags-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: bags-api
