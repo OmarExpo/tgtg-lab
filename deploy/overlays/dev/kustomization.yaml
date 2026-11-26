@@ -4,11 +4,11 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: bags
 resources:
-  - ../../base
+- ../../base
 
 # The ONLY line CI changes on every release. Phase 2 uses a locally built image
 # loaded into kind; after the first CI run this becomes ghcr.io/<you>/tgtg-lab/bags-api:<git-sha>.
 images:
-  - name: bags-api
-    newName: bags-api
-    newTag: dev
+- name: bags-api
+  newName: ghcr.io/omarexpo/tgtg-lab/bags-api
+  newTag: 3ba3a953519ac62b714de95bb9397f1294b56ed1
