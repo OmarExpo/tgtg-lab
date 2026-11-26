@@ -32,7 +32,7 @@ spec:
           annotations:
             summary: "bags-api 5xx ratio is {{ $value | humanizePercentage }}"
             description: "More than 5 % of /bags requests are failing for 2 minutes."
-            runbook_url: "https://github.com/CHANGE_ME/tgtg-lab/blob/main/RUNBOOK.md#bagsapihigherrorrate"
+            runbook_url: "https://github.com/OmarExpo/tgtg-lab/blob/main/RUNBOOK.md#bagsapihigherrorrate"
         - alert: BagsApiHighLatency
           expr: bags:latency_p95:rate5m > 0.5
           for: 3m
@@ -41,7 +41,7 @@ spec:
             team: infrastructure
           annotations:
             summary: "bags-api p95 latency is {{ $value | humanizeDuration }}"
-            runbook_url: "https://github.com/CHANGE_ME/tgtg-lab/blob/main/RUNBOOK.md#bagsapihighlatency"
+            runbook_url: "https://github.com/OmarExpo/tgtg-lab/blob/main/RUNBOOK.md#bagsapihighlatency"
         - alert: BagsApiNoReadyPods
           expr: kube_deployment_status_replicas_available{namespace="bags",deployment="bags-api"} < 1
           for: 1m
@@ -50,4 +50,4 @@ spec:
             team: infrastructure
           annotations:
             summary: "bags-api has no available pods"
-            runbook_url: "https://github.com/CHANGE_ME/tgtg-lab/blob/main/RUNBOOK.md#bagsapinoreadypods"
+            runbook_url: "https://github.com/OmarExpo/tgtg-lab/blob/main/RUNBOOK.md#bagsapinoreadypods"
