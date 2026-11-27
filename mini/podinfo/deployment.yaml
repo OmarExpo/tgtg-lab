@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podinfo
+  labels: { app: podinfo }
+spec:
+  replicas: 2                          # Git owns replicas here (no HPA in this mini lab)
+  selector:
+    matchLabels: { app: podinfo }      # must match the template labels
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }   # zero-downtime rollouts
+  template:
+    metadata:
+      labels: { app: podinfo }
+    spec:
+      containers:
+        - name: podinfo
+          image: ghcr.io/stefanprodan/podinfo:6.14.1
+          ports:
+            - { name: http, containerPort: 9898 }
+          env:
+            - { name: PODINFO_UI_MESSAGE, value: "hello from GitOps v1" }
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }    # scheduler reserves this
+            limits:   { memory: 64Mi }              # over this -> OOMKilled
+          readinessProbe:                           # fail -> no traffic
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 3
+          livenessProbe:                            # fail -> restart
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
